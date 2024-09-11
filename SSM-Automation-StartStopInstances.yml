@@ -1,0 +1,129 @@
+# Update this automation document:
+# aws ssm update-document \
+#     --name "StartStopInstances" \
+#     --document-format YAML \
+#     --content "file://./StartStopInstances-Automation.yml" \
+#     --document-version '$LATEST'
+
+# Execute this automation using IAM Service Role (https://gist.github.com/atheiman/021f1852997d0c42cd581d86aafc672f):
+# aws ssm start-automation-execution \
+#   --region us-gov-west-1 \
+#   --document-name "StartStopInstances" \
+#   --document-version '$LATEST' \
+#   --parameters '{"AutomationAssumeRole":["arn:aws:iam::111111111111:role/AWS-SystemsManager-AutomationExecutionRole"]}'
+
+---
+description: >-
+  Start EC2 instances by tag, run a Command Document, stop EC2 instances by tag.
+schemaVersion: "0.3"
+assumeRole: "{{ AutomationAssumeRole }}"
+parameters:
+  AutomationAssumeRole:
+    type: String
+    description: (Optional) The ARN of the role that allows Automation to perform the actions on your behalf.
+    default: ""
+outputs:
+  - StartInstances.InstanceIds
+  - StartInstances.StartingInstances
+  - StopInstances.InstanceIds
+  - StopInstances.StoppingInstances
+mainSteps:
+  - name: DescribeInstances
+    maxAttempts: 3 # Retry 2 times if failure encountered
+    action: aws:executeScript
+    inputs:
+      Runtime: python3.7
+      Handler: handler
+      Script: |
+        import boto3
+        def handler(event, context):
+          print(event)
+          print(context)
+          res = {'StartInstances': [], 'StopInstances': []}
+          ec2_resource = boto3.resource('ec2', region_name=context['global:REGION'])
+          for i in ec2_resource.instances.all():
+            # Find list of instances not opting out of Start
+            if list(filter(lambda t: t['Key'].upper() == 'START' and t['Value'].upper() != 'FALSE', i.tags)):
+              res['StartInstances'].append(i.instance_id)
+              # Find same list for Stop, only stop the instance if we started it
+              if list(filter(lambda t: t['Key'].upper() == 'STOP' and t['Value'].upper() != 'FALSE', i.tags)):
+                res['StopInstances'].append(i.instance_id)
+          return res
+    outputs:
+      - Name: StartInstances
+        Selector: "$.Payload.StartInstances"
+        Type: StringList
+      - Name: StopInstances
+        Selector: "$.Payload.StopInstances"
+        Type: StringList
+
+  - name: StartInstances
+    maxAttempts: 3 # Retry 2 times if failure encountered (IncorrectInstanceState error)
+    action: aws:executeAwsApi
+    inputs:
+      Service: ec2
+      Api: StartInstances
+      InstanceIds: "{{ DescribeInstances.StartInstances }}"
+    outputs:
+      - Name: StartingInstances
+        Selector: "$.StartingInstances"
+        Type: MapList
+      - Name: InstanceIds
+        Selector: "$..InstanceId"
+        Type: StringList
+
+  - name: WaitForInstancesStartup
+    action: aws:sleep
+    inputs:
+      # Duration: PT10M # 10 minutes
+      Duration: PT10S # 10 seconds
+
+  # These steps should be updated with the actual actions to be taken against instances.
+  # It is better to create a standalone SSM Command Document and Run it from this step, rather
+  # than declaring the 'commands' inline as is shown below. In a full SSM Command Document, steps can
+  # be designated to only only run on Windows or Linux instances using 'precondition' and
+  # 'platformType'.
+  - name: RunLinuxShellScript
+    action: 'aws:runCommand'
+    onFailure: step:StopInstances # Even if the script fails, be sure to stop instances
+    inputs:
+      DocumentName: AWS-RunShellScript # Only runs against Linux instances
+      Targets:
+        - Key: tag:Managed
+          Values:
+            - 'True'
+      Parameters:
+        commands:
+          - echo "Running shell '${0}' as user '$(whoami)'"
+          - 'echo "System info: $(uname -a)"'
+  # Example for Windows instances
+  # - name: RunPowerShellScript
+  #   action: 'aws:runCommand'
+  #   onFailure: step:StopInstances # Even if the script fails, be sure to stop instances
+  #   inputs:
+  #     DocumentName: AWS-RunPowerShellScript # Attempts to run against both Windows and Linux instances
+  #     Targets:
+  #       - Key: tag:Managed
+  #         Values:
+  #           - 'True'
+  #     Parameters:
+  #       commands:
+  #         - Write-Output "Running PowerShell version '$(PSVersionTable.PSVersion)' as user '$(whoami)'"
+  #         - >-
+  #             Write-Output "Windows version info: '$(Get-WmiObject -Class Win32_OperatingSystem |
+  #             Select-Object -Property Version,Caption)'"
+
+  - name: StopInstances
+    maxAttempts: 3 # Retry 2 times if failure encountered (IncorrectInstanceState error)
+    action: aws:executeAwsApi
+    inputs:
+      Service: ec2
+      Api: StopInstances
+      InstanceIds: "{{ DescribeInstances.StopInstances }}"
+    outputs:
+      - Name: StoppingInstances
+        Selector: "$.StoppingInstances"
+        Type: MapList
+      - Name: InstanceIds
+        Selector: "$..InstanceId"
+        Type: StringList
