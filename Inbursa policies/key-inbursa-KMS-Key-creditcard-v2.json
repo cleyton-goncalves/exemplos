@@ -1,0 +1,117 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssm:DescribeAssociation",
+                "ssm:GetDeployablePatchSnapshotForInstance",
+                "ssm:GetDocument",
+                "ssm:DescribeDocument",
+                "ssm:GetManifest",
+                "ssm:GetParameter",
+                "ssm:GetParameters",
+                "ssm:ListAssociations",
+                "ssm:ListInstanceAssociations",
+                "ssm:PutInventory",
+                "ssm:PutComplianceItems",
+                "ssm:PutConfigurePackageResult",
+                "ssm:UpdateAssociationStatus",
+                "ssm:UpdateInstanceAssociationStatus",
+                "ssm:UpdateInstanceInformation"
+            ],
+            "Resource": "*",
+            "_comment": "Permite ações do AWS Systems Manager (SSM) necessárias para gerenciamento de instâncias."
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ssmmessages:CreateControlChannel",
+                "ssmmessages:CreateDataChannel",
+                "ssmmessages:OpenControlChannel",
+                "ssmmessages:OpenDataChannel"
+            ],
+            "Resource": "*",
+            "_comment": "Permite ações de mensagens do AWS Systems Manager para comunicação entre instâncias e o serviço SSM."
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ec2messages:AcknowledgeMessage",
+                "ec2messages:DeleteMessage",
+                "ec2messages:FailMessage",
+                "ec2messages:GetEndpoint",
+                "ec2messages:GetMessages",
+                "ec2messages:SendReply"
+            ],
+            "Resource": "*",
+            "_comment": "Permite ações de mensagens do EC2 para comunicação entre instâncias e o serviço EC2."
+        },
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:PutMetricData",
+                "logs:*",
+                "ds:CreateComputer",
+                "ssmmessages:OpenControlChannel",
+                "ssmmessages:CreateControlChannel",
+                "ssmmessages:CreateDataChannel",
+                "kms:ListKeys",
+                "ssmmessages:OpenDataChannel",
+                "ssm:*",
+                "kms:ListAliases",
+                "ds:DescribeDirectories",
+                "ec2messages:*",
+                "ec2:DescribeInstanceStatus"
+            ],
+            "Resource": "*",
+            "_comment": "Permite ações relacionadas ao CloudWatch, Logs, AWS KMS e AWS Directory Service."
+        },
+        {
+            "Sid": "VisualEditor1",
+            "Effect": "Allow",
+            "Action": "iam:CreateServiceLinkedRole",
+            "Resource": "arn:aws:iam::*:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM*",
+            "Condition": {
+                "StringLike": {
+                    "iam:AWSServiceName": "ssm.amazonaws.com"
+                }
+            },
+            "_comment": "Permite a criação de funções vinculadas ao serviço para o AWS Systems Manager."
+        },
+        {
+            "Sid": "VisualEditor2",
+            "Effect": "Allow",
+            "Action": [
+                "iam:GetServiceLinkedRoleDeletionStatus",
+                "kms:Decrypt",
+                "kms:Encrypt",
+                "kms:GetKeyPolicy",
+                "kms:GenerateDataKey",
+                "kms:DescribeKey",
+                "kms:ListResourceTags",
+                "iam:DeleteServiceLinkedRole",
+                "kms:GenerateDataKeyPair"
+            ],
+            "Resource": [
+                "arn:aws:kms:sa-east-1:007067854633:key/ae32e458-2604-43d9-8804-eab840887521",
+                "arn:aws:iam::*:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM*"
+            ],
+            "_comment": "Permite a deleção de funções vinculadas ao serviço e ações de criptografia/descriptografia do AWS KMS."
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::bkt-appl-qa",
+                "arn:aws:s3:::bkt-appl-qa/*"
+            ],
+            "_comment": "Permite ações de Get, Put e List no bucket S3 bkt-appl-qa."
+        }
+    ]
+}

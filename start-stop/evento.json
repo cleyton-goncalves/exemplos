@@ -1,0 +1,6 @@
+evento.json
+{
+  "action": "<acao>",
+  "instanceIds": [
+    "<id_instancia>"
+  ]

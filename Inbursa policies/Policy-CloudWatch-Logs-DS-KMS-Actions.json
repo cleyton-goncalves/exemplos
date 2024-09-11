@@ -1,0 +1,26 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "VisualEditor0",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:PutMetricData",
+                "logs:*",
+                "ds:CreateComputer",
+                "ssmmessages:OpenControlChannel",
+                "ssmmessages:CreateControlChannel",
+                "ssmmessages:CreateDataChannel",
+                "kms:ListKeys",
+                "ssmmessages:OpenDataChannel",
+                "ssm:*",
+                "kms:ListAliases",
+                "ds:DescribeDirectories",
+                "ec2messages:*",
+                "ec2:DescribeInstanceStatus"
+            ],
+            "Resource": "*",
+            "_comment": "Permite ações relacionadas ao CloudWatch, Logs, AWS KMS e AWS Directory Service."
+        }
+    ]
+}

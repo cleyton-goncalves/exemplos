@@ -1,0 +1,19 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "s3:ListBucket"
+            ],
+            "Resource": [
+                "arn:aws:s3:::bkt-appl-qa",
+                "arn:aws:s3:::bkt-appl-qa/*"
+            ],
+            "_comment": "Permite ações de Get, Put e List no bucket S3 bkt-appl-qa."
+        }
+    ]
+}
+

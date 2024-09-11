@@ -1,0 +1,50 @@
+description: 'Start EC2 instances by tag (Env: DEV, Autostart: TRUE).'
+schemaVersion: '0.3'
+assumeRole: '{{ AutomationAssumeRole }}'
+parameters:
+  AutomationAssumeRole:
+    type: String
+    description: (Optional) The ARN of the role that allows Automation to perform the actions on your behalf.
+    default: arn:aws:iam::839364222047:role/SSM-Executor
+mainSteps:
+  - name: DescribeInstances
+    action: aws:executeScript
+    maxAttempts: 3
+    nextStep: StartInstances
+    isEnd: false
+    inputs:
+      Runtime: python3.9
+      Handler: handler
+      Script: |
+        import boto3
+        def handler(event, context):
+          ec2_resource = boto3.resource('ec2', region_name=context['global:REGION'])
+          start_instances = [
+            i.instance_id
+            for i in ec2_resource.instances.all()
+            if any(tag['Key'].upper() == 'AUTOSTART' and tag['Value'].upper() == 'TRUE' for tag in i.tags) and
+               any(tag['Key'].upper() == 'ENV' and tag['Value'].upper() == 'DEV' for tag in i.tags)
+          ]
+          return {'StartInstances': start_instances}
+    outputs:
+      - Name: StartInstances
+        Selector: $.Payload.StartInstances
+        Type: StringList
+  - name: StartInstances
+    action: aws:executeAwsApi
+    maxAttempts: 3
+    isEnd: true
+    inputs:
+      Service: ec2
+      Api: StartInstances
+      InstanceIds: '{{ DescribeInstances.StartInstances }}'
+    outputs:
+      - Name: StartingInstances
+        Selector: $.StartingInstances
+        Type: MapList
+      - Name: InstanceIds
+        Selector: $..InstanceId
+        Type: StringList
+outputs:
+  - StartInstances.InstanceIds
+  - StartInstances.StartingInstances
