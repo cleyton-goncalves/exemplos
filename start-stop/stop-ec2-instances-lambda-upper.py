@@ -1,20 +1,3 @@
-# Função Lambda: stop-ec2-instances-lambda
-# 
-# Descrição:
-# Esta função é responsável por desligar instâncias EC2 com base em tags específicas. 
-# Ela filtra as instâncias que possuem as tags 'Env' e 'AUTOSTOP', ambas com os valores 
-# definidos como 'DEV' e 'TRUE', respectivamente. Assim como a função de inicialização, 
-# o método upper() é utilizado nas comparações de tags para evitar problemas relacionados 
-# à sensibilidade de maiúsculas e minúsculas (case sensitive). As instâncias que atenderem 
-# aos critérios serão desligadas.
-# 
-# Entradas:
-# - Nenhuma entrada é exigida explicitamente (evento é opcional).
-# 
-# Saídas:
-# - Status de sucesso (200) e lista de instâncias desligadas, ou mensagem informando 
-#   que não há instâncias para desligar.
-
 import boto3
 import logging
 
@@ -25,15 +8,16 @@ logger = logging.getLogger()
 def lambda_handler(event, context):
     ec2_client = boto3.client('ec2')
     
-    # Filtros de instâncias com tags 'Env' e 'AUTOSTOP'
+    # Filtros de instâncias com tags 'Env' e 'AUTOSTART' (sem upper() aqui, pois o filtro é direto)
     filters = [
         {'Name': 'tag:Env', 'Values': ['DEV']},
-        {'Name': 'tag:AUTOSTOP', 'Values': ['TRUE']}
+        {'Name': 'tag:AUTOSTART', 'Values': ['TRUE']}
     ]
     
     try:
         # Descreve instâncias com os filtros
         response = ec2_client.describe_instances(Filters=filters)
+        logger.info(f"Resposta da AWS EC2: {response}")  # Adicionando log para ver a resposta da API
     except Exception as e:
         logger.error(f"Erro ao descrever instâncias: {str(e)}")
         return {
@@ -46,9 +30,12 @@ def lambda_handler(event, context):
         instance['InstanceId']
         for reservation in response['Reservations']
         for instance in reservation['Instances']
-        if all(tag['Key'].upper() == 'ENV' and tag['Value'].upper() == 'DEV' for tag in instance.get('Tags', [])) and
-           all(tag['Key'].upper() == 'AUTOSTOP' and tag['Value'].upper() == 'TRUE' for tag in instance.get('Tags', []))
+        if any(tag['Key'].upper() == 'ENV' and tag['Value'].upper() == 'DEV' for tag in instance.get('Tags', [])) and
+           any(tag['Key'].upper() == 'AUTOSTART' and tag['Value'].upper() == 'TRUE' for tag in instance.get('Tags', []))
     ]
+    
+    # Registrar IDs das instâncias encontradas antes de desligar
+    logger.info(f"Instâncias encontradas para desligar: {instance_ids}")
     
     # Se houver instâncias a desligar, desliga as instâncias
     if instance_ids:

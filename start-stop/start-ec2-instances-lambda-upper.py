@@ -1,20 +1,3 @@
-# Função Lambda: start-ec2-instances-lambda
-# 
-# Descrição:
-# Esta função é responsável por iniciar instâncias EC2 com base em tags específicas. 
-# Ela filtra as instâncias que possuem as tags 'Env' e 'AUTOSTART', ambas com os valores 
-# definidos como 'DEV' e 'TRUE', respectivamente. Para evitar problemas de sensibilidade 
-# de maiúsculas e minúsculas (case sensitive), a função utiliza o método upper() nas 
-# comparações das tags. Caso existam instâncias com essas tags, elas são iniciadas 
-# automaticamente.
-# 
-# Entradas:
-# - Nenhuma entrada é exigida explicitamente (evento é opcional).
-# 
-# Saídas:
-# - Status de sucesso (200) e lista de instâncias iniciadas, ou mensagem informando 
-#   que não há instâncias para iniciar.
-
 import boto3
 import logging
 
@@ -25,7 +8,7 @@ logger = logging.getLogger()
 def lambda_handler(event, context):
     ec2_client = boto3.client('ec2')
     
-    # Filtros de instâncias com tags 'Env' e 'AUTOSTART'
+    # Filtros de instâncias com tags 'Env' e 'AUTOSTART' (sem upper() aqui, pois o filtro é direto)
     filters = [
         {'Name': 'tag:Env', 'Values': ['DEV']},
         {'Name': 'tag:AUTOSTART', 'Values': ['TRUE']}
@@ -34,6 +17,7 @@ def lambda_handler(event, context):
     try:
         # Descreve instâncias com os filtros
         response = ec2_client.describe_instances(Filters=filters)
+        logger.info(f"Resposta da AWS EC2: {response}")  # Adicionando log para ver a resposta da API
     except Exception as e:
         logger.error(f"Erro ao descrever instâncias: {str(e)}")
         return {
@@ -46,9 +30,12 @@ def lambda_handler(event, context):
         instance['InstanceId']
         for reservation in response['Reservations']
         for instance in reservation['Instances']
-        if all(tag['Key'].upper() == 'ENV' and tag['Value'].upper() == 'DEV' for tag in instance.get('Tags', [])) and
-           all(tag['Key'].upper() == 'AUTOSTART' and tag['Value'].upper() == 'TRUE' for tag in instance.get('Tags', []))
+        if any(tag['Key'].upper() == 'ENV' and tag['Value'].upper() == 'DEV' for tag in instance.get('Tags', [])) and
+           any(tag['Key'].upper() == 'AUTOSTART' and tag['Value'].upper() == 'TRUE' for tag in instance.get('Tags', []))
     ]
+    
+    # Registrar IDs das instâncias encontradas antes de iniciar
+    logger.info(f"Instâncias encontradas para iniciar: {instance_ids}")
     
     # Se houver instâncias a iniciar, inicia as instâncias
     if instance_ids:
